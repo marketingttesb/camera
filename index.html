@@ -2,39 +2,35 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Camera GPS Capture - v1.2</title>
+<title>Camera GPS Capture - v1.0.1</title>
+
 <style>
 body{
   background:#000;
   color:white;
   text-align:center;
   font-family:Arial;
-  margin:0;
 }
+
 #container{
   position:relative;
-  max-width:800px; /* besarkan display video */
+  max-width:500px;
   margin:auto;
 }
+
 video{
   width:100%;
-  height:auto;
 }
-#topbar{
+
+#logo{
   position:absolute;
   top:0;
   left:0;
-  display:flex;
-  gap:5px;
-  pointer-events:none; /* overlay tidak ganggu klik button */
+  width:80px;
+  height:80px; /* tetap ukuran */
+  margin:0;    /* buang margin */
 }
-#map{
-  width:100px;
-  height:100px;
-}
-#logo{
-  height:100px; /* sama tinggi map */
-}
+
 #info{
   position:absolute;
   bottom:10px;
@@ -46,22 +42,20 @@ video{
   text-align:left;
   color:white;
 }
+
 button{
   padding:12px 20px;
   font-size:18px;
-  margin:15px auto;
-  display:block;
+  margin-top:10px;
 }
 </style>
 </head>
+
 <body>
 
 <div id="container">
   <video id="video" autoplay playsinline></video>
-  <div id="topbar">
-    <img id="map">
-    <img id="logo" src="logo.png">
-  </div>
+  <img id="logo" src="logo.png">
   <div id="info">
     <div id="time"></div>
     <div id="gps"></div>
@@ -69,36 +63,33 @@ button{
   </div>
 </div>
 
-<button id="capture">CAPTURE</button>
+<button onclick="capture()">CAPTURE</button>
+
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-let lat=0, lon=0, address="", mapURL="";
-const video = document.getElementById("video");
+let lat=0, lon=0, address="";
+const video=document.getElementById("video");
 
 // Camera
 navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 .then(stream=>{video.srcObject=stream;});
 
-// Geolocation + map + address
+// Geolocation + address
 navigator.geolocation.getCurrentPosition(async pos=>{
   lat=pos.coords.latitude;
   lon=pos.coords.longitude;
 
   document.getElementById("gps").innerHTML = lat.toFixed(6)+", "+lon.toFixed(6);
 
-  mapURL="https://staticmap.openstreetmap.de/staticmap.php?center="
-    +lat+","+lon+"&zoom=16&size=300x300&markers="+lat+","+lon+",red";
-
-  const mapImgEl = document.getElementById("map");
-  mapImgEl.src = mapURL;
-
-  // reverse geocode full address
+  // Reverse geocode full address
   try{
     let r = await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon);
     let d = await r.json();
+
     if(d.address){
       let a=[];
+      // Ambil semua field yang ada untuk full address
       ["house_number","road","suburb","city","county","state","postcode","country"].forEach(k=>{
         if(d.address[k]) a.push(d.address[k]);
       });
@@ -111,67 +102,45 @@ navigator.geolocation.getCurrentPosition(async pos=>{
   }
 });
 
-// Time display
-function getTime(){ let n=new Date(); return n.toLocaleDateString()+" "+n.toLocaleTimeString();}
-setInterval(()=>{document.getElementById("time").innerHTML=getTime();},1000);
+// Time
+function getTime(){ 
+  let n=new Date(); 
+  return n.toLocaleDateString()+" "+n.toLocaleTimeString();
+}
+setInterval(()=>{document.getElementById("time").innerHTML = getTime();},1000);
 
 // Capture
-document.getElementById("capture").addEventListener("click",()=>{
+function capture(){
   const canvas=document.getElementById("canvas");
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
   // draw video
-  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  ctx.drawImage(video,0,0);
 
-  // draw map
-  let mapImg = new Image();
-  mapImg.crossOrigin="anonymous";
-  mapImg.src=mapURL;
-  mapImg.onload=function(){
-    const mapH = canvas.height*0.12; // 12% video height
-    ctx.drawImage(mapImg, canvas.width-mapH, 0, mapH, mapH);
+  // draw bottom info
+  ctx.fillStyle="rgba(0,0,0,0.6)";
+  ctx.fillRect(canvas.width-260,canvas.height-110,250,100);
 
-    // draw logo (sama tinggi map)
-    const logo=document.getElementById("logo");
-    ctx.drawImage(logo, canvas.width-mapH*2-5, 0, mapH, mapH);
+  ctx.fillStyle="white";
+  ctx.font="20px Arial";
+  ctx.fillText(getTime(),canvas.width-250,canvas.height-80);
 
-    // draw info panel
-    const infoH = canvas.height*0.20;
-    ctx.fillStyle="rgba(0,0,0,0.6)";
-    ctx.fillRect(0, canvas.height-infoH, canvas.width, infoH);
+  ctx.font="16px Arial";
+  ctx.fillText(lat.toFixed(6)+", "+lon.toFixed(6),canvas.width-250,canvas.height-50);
 
-    ctx.fillStyle="white";
-    ctx.font="28px Arial";
-    ctx.fillText(getTime(),20,canvas.height-infoH+40);
+  ctx.fillText(address,canvas.width-250,canvas.height-20);
 
-    ctx.font="22px Arial";
-    ctx.fillText(lat.toFixed(6)+", "+lon.toFixed(6),20,canvas.height-infoH+80);
+  // draw logo
+  const logo=document.getElementById("logo");
+  ctx.drawImage(logo,0,0,80,80);
 
-    wrapText(ctx,address,20,canvas.height-infoH+120,canvas.width-40,28);
-
-    // download
-    let link=document.createElement("a");
-    link.download="site_photo.png";
-    link.href=canvas.toDataURL("image/png");
-    link.click();
-  }
-});
-
-function wrapText(ctx,text,x,y,maxWidth,lineHeight){
-  let words=text.split(" ");
-  let line="";
-  for(let n=0;n<words.length;n++){
-    let test=line+words[n]+" ";
-    let w=ctx.measureText(test).width;
-    if(w>maxWidth && n>0){
-      ctx.fillText(line,x,y);
-      line=words[n]+" ";
-      y+=lineHeight;
-    } else line=test;
-  }
-  ctx.fillText(line,x,y);
+  // download
+  let link=document.createElement("a");
+  link.download="photo.png";
+  link.href=canvas.toDataURL("image/png");
+  link.click();
 }
 </script>
 
