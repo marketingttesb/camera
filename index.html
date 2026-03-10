@@ -31,21 +31,14 @@ video{
   height:auto;
   object-fit:contain;
 }
-#map{
-  position:absolute;
-  bottom:0;
-  left:0;
-  width:25%;
-  height:auto;
-}
 #info{
   position:absolute;
   bottom:0;
-  left:25%;
-  width:75%;
+  left:0;
+  width:100%;
   background:rgba(0,0,0,0.6);
   padding:8px;
-  font-size:12px;
+  font-size:14px;
   text-align:left;
 }
 button{
@@ -57,10 +50,10 @@ button{
 </style>
 </head>
 <body>
+
 <div id="container">
   <video id="video" autoplay playsinline></video>
   <img id="logo" src="logo.png">
-  <img id="map">
   <div id="info">
     <div id="time"></div>
     <div id="gps"></div>
@@ -72,25 +65,20 @@ button{
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-let lat=0, lon=0, address="", mapURL="";
+let lat=0, lon=0, address="";
 const video=document.getElementById("video");
 
 // Camera
 navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 .then(stream=>{video.srcObject=stream;});
 
-// Geolocation + map + address
+// Geolocation + full address
 navigator.geolocation.getCurrentPosition(async pos=>{
   lat=pos.coords.latitude;
   lon=pos.coords.longitude;
 
   document.getElementById("gps").innerHTML = lat.toFixed(6)+", "+lon.toFixed(6);
 
-  mapURL="https://staticmap.openstreetmap.de/staticmap.php?center="+lat+","+lon+"&zoom=16&size=300x300&markers="+lat+","+lon+",red";
-  const mapImgEl=document.getElementById("map");
-  mapImgEl.src=mapURL;
-
-  // Reverse geocode
   try{
     let r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon);
     let d=await r.json();
@@ -106,7 +94,7 @@ navigator.geolocation.getCurrentPosition(async pos=>{
 });
 
 // Time
-function getTime(){let n=new Date(); return n.toLocaleDateString()+" "+n.toLocaleTimeString();}
+function getTime(){ let n=new Date(); return n.toLocaleDateString()+" "+n.toLocaleTimeString(); }
 setInterval(()=>{document.getElementById("time").innerHTML=getTime();},1000);
 
 // Capture
@@ -116,37 +104,30 @@ document.getElementById("capture").addEventListener("click",()=>{
   canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
+  // draw video
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // Logo
+  // draw logo top-left
   const logo=document.getElementById("logo");
   const logoWidth=canvas.width*0.5;
   const logoHeight=logo.naturalHeight*(logoWidth/logo.naturalWidth);
   ctx.drawImage(logo,0,0,logoWidth,logoHeight);
 
-  // Map
-  const map=document.getElementById("map");
-  const mapWidth=canvas.width*0.25;
-  const mapHeight=map.naturalHeight*(mapWidth/map.naturalWidth);
-  ctx.drawImage(map,0,canvas.height-mapHeight,mapWidth,mapHeight);
-
-  // Info panel
-  const infoX=mapWidth;
-  const infoWidth=canvas.width-mapWidth;
+  // draw info panel bottom full width
   const infoHeight=canvas.height*0.25;
   ctx.fillStyle="rgba(0,0,0,0.6)";
-  ctx.fillRect(infoX,canvas.height-infoHeight,infoWidth,infoHeight);
+  ctx.fillRect(0,canvas.height-infoHeight,canvas.width,infoHeight);
 
   ctx.fillStyle="white";
   ctx.font="28px Arial";
-  ctx.fillText(getTime(),infoX+10,canvas.height-infoHeight+40);
+  ctx.fillText(getTime(),10,canvas.height-infoHeight+40);
 
   ctx.font="22px Arial";
-  ctx.fillText(lat.toFixed(6)+", "+lon.toFixed(6),infoX+10,canvas.height-infoHeight+80);
+  ctx.fillText(lat.toFixed(6)+", "+lon.toFixed(6),10,canvas.height-infoHeight+80);
 
-  wrapText(ctx,address,infoX+10,canvas.height-infoHeight+120,infoWidth-20,28);
+  wrapText(ctx,address,10,canvas.height-infoHeight+120,canvas.width-20,28);
 
-  // Auto file name
+  // auto file name
   const ts=new Date().toISOString().replace(/[:.]/g,'-');
   const link=document.createElement("a");
   link.download="photo_"+ts+".png";
@@ -169,12 +150,11 @@ function wrapText(ctx,text,x,y,maxWidth,lineHeight){
   ctx.fillText(line,x,y);
 }
 
-// Service Worker
+// service worker
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js')
-  .then(()=>console.log("SW registered"))
-  .catch(e=>console.log("SW failed",e));
+  navigator.serviceWorker.register('sw.js').then(()=>console.log("SW registered"));
 }
 </script>
+
 </body>
 </html>
