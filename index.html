@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Camera GPS Capture PWA</title>
 <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
 <style>
 body{
   margin:0;
@@ -85,12 +86,11 @@ navigator.geolocation.getCurrentPosition(async pos=>{
 
   document.getElementById("gps").innerHTML = lat.toFixed(6)+", "+lon.toFixed(6);
 
-  // Map static
   mapURL="https://staticmap.openstreetmap.de/staticmap.php?center="+lat+","+lon+"&zoom=16&size=300x300&markers="+lat+","+lon+",red";
   const mapImgEl=document.getElementById("map");
   mapImgEl.src=mapURL;
 
-  // reverse geocode
+  // Reverse geocode
   try{
     let r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon);
     let d=await r.json();
@@ -118,19 +118,19 @@ document.getElementById("capture").addEventListener("click",()=>{
 
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // logo
+  // Logo
   const logo=document.getElementById("logo");
   const logoWidth=canvas.width*0.5;
   const logoHeight=logo.naturalHeight*(logoWidth/logo.naturalWidth);
   ctx.drawImage(logo,0,0,logoWidth,logoHeight);
 
-  // map
+  // Map
   const map=document.getElementById("map");
   const mapWidth=canvas.width*0.25;
   const mapHeight=map.naturalHeight*(mapWidth/map.naturalWidth);
   ctx.drawImage(map,0,canvas.height-mapHeight,mapWidth,mapHeight);
 
-  // info panel
+  // Info panel
   const infoX=mapWidth;
   const infoWidth=canvas.width-mapWidth;
   const infoHeight=canvas.height*0.25;
@@ -146,9 +146,10 @@ document.getElementById("capture").addEventListener("click",()=>{
 
   wrapText(ctx,address,infoX+10,canvas.height-infoHeight+120,infoWidth-20,28);
 
-  // download
+  // Auto file name
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
   const link=document.createElement("a");
-  link.download="site_photo.png";
+  link.download="photo_"+ts+".png";
   link.href=canvas.toDataURL("image/png");
   link.click();
 });
@@ -168,9 +169,11 @@ function wrapText(ctx,text,x,y,maxWidth,lineHeight){
   ctx.fillText(line,x,y);
 }
 
-// register service worker
+// Service Worker
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').then(()=>console.log("SW registered"));
+  navigator.serviceWorker.register('sw.js')
+  .then(()=>console.log("SW registered"))
+  .catch(e=>console.log("SW failed",e));
 }
 </script>
 </body>
