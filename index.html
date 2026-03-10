@@ -27,6 +27,7 @@ video{
     display:flex;
     align-items:flex-start;
     gap:5px;
+    pointer-events:none; /* overlay tidak ganggu klik button */
 }
 #mapPreview{
     height:60px;
@@ -50,6 +51,8 @@ video{
     border:none;
     display:block;
     margin:15px auto;
+    z-index:999;
+    position:relative;
 }
 </style>
 </head>
@@ -75,12 +78,13 @@ video{
 
 <script>
 let lat=0, lon=0, address="", mapURL="";
-
 const video=document.getElementById("video");
+
+// Camera
 navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 .then(stream=>{video.srcObject=stream;});
 
-// get location + address + map
+// Get location + map + address
 navigator.geolocation.getCurrentPosition(async pos=>{
     lat=pos.coords.latitude;
     lon=pos.coords.longitude;
@@ -90,27 +94,27 @@ navigator.geolocation.getCurrentPosition(async pos=>{
         +lat+","+lon+"&zoom=16&size=300x300&markers="+lat+","+lon+",red";
     document.getElementById("mapPreview").src=mapURL;
 
-    // reverse geocoding full address (exclude unit)
+    // reverse geocoding full address
     let r=await fetch(
         "https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon
     );
     let d=await r.json();
     if(d.address){
-        // build full address without unit number
+        // concat all relevant fields except house_number
         let a=[];
-        ["house_number","road","suburb","city","county","state","postcode","country"].forEach(k=>{
-            if(d.address[k] && k!="house_number") a.push(d.address[k]);
+        ["road","suburb","city","county","state","postcode","country"].forEach(k=>{
+            if(d.address[k]) a.push(d.address[k]);
         });
         address=a.join(", ");
     } else address="";
     document.getElementById("addr").innerHTML=address;
 });
 
-// time display
+// Time display
 function getTime(){ let n=new Date(); return n.toLocaleDateString()+" "+n.toLocaleTimeString();}
 setInterval(()=>{document.getElementById("time").innerHTML=getTime();},1000);
 
-// capture button
+// Capture button
 document.getElementById("capture").addEventListener("click",capture);
 
 function capture(){
@@ -120,7 +124,7 @@ function capture(){
     let ctx=canvas.getContext("2d");
     ctx.drawImage(video,0,0);
 
-    // map
+    // Map image
     let mapImg=new Image();
     mapImg.crossOrigin="anonymous";
     mapImg.src=mapURL;
@@ -128,14 +132,15 @@ function capture(){
         let mapH=canvas.height*0.08; // same height as logo
         ctx.drawImage(mapImg,0,0,mapH,mapH);
 
-        // logo
+        // Logo beside map
         let logo=document.getElementById("logo");
         ctx.drawImage(logo,mapH+5,0,mapH,mapH);
 
-        // info panel at bottom
+        // Info panel at bottom
         let infoH=canvas.height*0.20;
         ctx.fillStyle="rgba(0,0,0,0.7)";
         ctx.fillRect(0,canvas.height-infoH,canvas.width,infoH);
+
         ctx.fillStyle="white";
         ctx.font="28px Arial";
         ctx.fillText(getTime(),20,canvas.height-infoH+40);
@@ -166,5 +171,6 @@ function wrapText(ctx,text,x,y,maxWidth,lineHeight){
     ctx.fillText(line,x,y);
 }
 </script>
+
 </body>
 </html>
