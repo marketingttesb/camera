@@ -2,60 +2,64 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Camera GPS Capture - v1.0.1</title>
-
+<title>Camera GPS Capture - v1.0.2</title>
 <style>
 body{
   background:#000;
   color:white;
   text-align:center;
   font-family:Arial;
+  margin:0;
 }
-
 #container{
   position:relative;
-  max-width:500px;
+  max-width:800px;
   margin:auto;
 }
-
 video{
   width:100%;
+  height:auto;
 }
-
 #logo{
   position:absolute;
   top:0;
   left:0;
-  width:80px;
-  height:80px; /* tetap ukuran */
-  margin:0;    /* buang margin */
+  width:50%; /* 50% screen width */
+  height:auto;
+  object-fit:contain;
 }
-
+#map{
+  position:absolute;
+  bottom:0;
+  left:0;
+  width:25%; /* 1/4 screen */
+  height:auto;
+  object-fit:cover;
+}
 #info{
   position:absolute;
-  bottom:10px;
-  left:10px;
-  right:10px;
+  bottom:0;
+  left:25%; /* baki 3/4 */
+  width:75%;
   background:rgba(0,0,0,0.6);
   padding:8px;
   font-size:12px;
   text-align:left;
-  color:white;
 }
-
 button{
   padding:12px 20px;
   font-size:18px;
-  margin-top:10px;
+  margin:15px auto;
+  display:block;
 }
 </style>
 </head>
-
 <body>
 
 <div id="container">
   <video id="video" autoplay playsinline></video>
   <img id="logo" src="logo.png">
+  <img id="map">
   <div id="info">
     <div id="time"></div>
     <div id="gps"></div>
@@ -63,84 +67,105 @@ button{
   </div>
 </div>
 
-<button onclick="capture()">CAPTURE</button>
-
+<button id="capture">CAPTURE</button>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script>
-let lat=0, lon=0, address="";
+let lat=0, lon=0, address="", mapURL="";
 const video=document.getElementById("video");
 
 // Camera
 navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 .then(stream=>{video.srcObject=stream;});
 
-// Geolocation + address
+// Geolocation + map + address
 navigator.geolocation.getCurrentPosition(async pos=>{
   lat=pos.coords.latitude;
   lon=pos.coords.longitude;
 
   document.getElementById("gps").innerHTML = lat.toFixed(6)+", "+lon.toFixed(6);
 
-  // Reverse geocode full address
-  try{
-    let r = await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon);
-    let d = await r.json();
+  mapURL="https://staticmap.openstreetmap.de/staticmap.php?center="+lat+","+lon+"&zoom=16&size=300x300&markers="+lat+","+lon+",red";
+  const mapImgEl=document.getElementById("map");
+  mapImgEl.src=mapURL;
 
+  // reverse geocode
+  try{
+    let r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon);
+    let d=await r.json();
     if(d.address){
       let a=[];
-      // Ambil semua field yang ada untuk full address
       ["house_number","road","suburb","city","county","state","postcode","country"].forEach(k=>{
         if(d.address[k]) a.push(d.address[k]);
       });
-      address = a.join(", ");
+      address=a.join(", ");
     } else address="";
     document.getElementById("addr").innerHTML = address;
-  }catch(e){
-    console.log("Address lookup failed", e);
-    document.getElementById("addr").innerHTML="";
-  }
+  }catch(e){console.log("Address lookup failed",e);}
 });
 
 // Time
-function getTime(){ 
-  let n=new Date(); 
-  return n.toLocaleDateString()+" "+n.toLocaleTimeString();
-}
-setInterval(()=>{document.getElementById("time").innerHTML = getTime();},1000);
+function getTime(){let n=new Date(); return n.toLocaleDateString()+" "+n.toLocaleTimeString();}
+setInterval(()=>{document.getElementById("time").innerHTML=getTime();},1000);
 
 // Capture
-function capture(){
+document.getElementById("capture").addEventListener("click",()=>{
   const canvas=document.getElementById("canvas");
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
   // draw video
-  ctx.drawImage(video,0,0);
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // draw bottom info
+  // draw logo (top-left, 50% width)
+  const logo=document.getElementById("logo");
+  const logoWidth=canvas.width*0.5;
+  const logoHeight=logo.naturalHeight*(logoWidth/logo.naturalWidth);
+  ctx.drawImage(logo,0,0,logoWidth,logoHeight);
+
+  // draw map (bottom-left, 1/4 width)
+  const map=document.getElementById("map");
+  const mapWidth=canvas.width*0.25;
+  const mapHeight=map.naturalHeight*(mapWidth/map.naturalWidth);
+  ctx.drawImage(map,0,canvas.height-mapHeight,mapWidth,mapHeight);
+
+  // draw info panel (3/4 bottom-right)
+  const infoX=mapWidth;
+  const infoWidth=canvas.width-mapWidth;
+  const infoHeight=canvas.height*0.25; // adjust panel height
   ctx.fillStyle="rgba(0,0,0,0.6)";
-  ctx.fillRect(canvas.width-260,canvas.height-110,250,100);
+  ctx.fillRect(infoX,canvas.height-infoHeight,infoWidth,infoHeight);
 
   ctx.fillStyle="white";
-  ctx.font="20px Arial";
-  ctx.fillText(getTime(),canvas.width-250,canvas.height-80);
+  ctx.font="28px Arial";
+  ctx.fillText(getTime(),infoX+10,canvas.height-infoHeight+40);
 
-  ctx.font="16px Arial";
-  ctx.fillText(lat.toFixed(6)+", "+lon.toFixed(6),canvas.width-250,canvas.height-50);
+  ctx.font="22px Arial";
+  ctx.fillText(lat.toFixed(6)+", "+lon.toFixed(6),infoX+10,canvas.height-infoHeight+80);
 
-  ctx.fillText(address,canvas.width-250,canvas.height-20);
-
-  // draw logo
-  const logo=document.getElementById("logo");
-  ctx.drawImage(logo,0,0,80,80);
+  wrapText(ctx,address,infoX+10,canvas.height-infoHeight+120,infoWidth-20,28);
 
   // download
-  let link=document.createElement("a");
+  const link=document.createElement("a");
   link.download="photo.png";
   link.href=canvas.toDataURL("image/png");
   link.click();
+});
+
+function wrapText(ctx,text,x,y,maxWidth,lineHeight){
+  const words=text.split(" ");
+  let line="";
+  for(let n=0;n<words.length;n++){
+    const test=line+words[n]+" ";
+    const w=ctx.measureText(test).width;
+    if(w>maxWidth && n>0){
+      ctx.fillText(line,x,y);
+      line=words[n]+" ";
+      y+=lineHeight;
+    } else line=test;
+  }
+  ctx.fillText(line,x,y);
 }
 </script>
 
