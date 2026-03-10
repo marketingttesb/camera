@@ -3,56 +3,66 @@
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Camera GPS Capture</title>
+<title>Tien Tien Delivery Status</title>
 
 <style>
 
 body{
-background:#000;
-color:white;
-text-align:center;
+margin:0;
+background:black;
 font-family:Arial;
 }
 
 #container{
 position:relative;
-max-width:500px;
-margin:auto;
+width:100%;
+height:100vh;
+overflow:hidden;
 }
 
 video{
 width:100%;
+height:100%;
+object-fit:cover;
 }
 
 #logo{
 position:absolute;
-top:10px;
-left:10px;
-width:80px;
+top:0;
+left:0;
+height:80px;
+padding:10px;
 }
 
 #map{
 position:absolute;
-bottom:10px;
-left:10px;
-width:120px;
-height:120px;
+bottom:0;
+left:0;
+width:200px;
+height:200px;
+border:0;
 }
 
 #info{
 position:absolute;
-bottom:10px;
-right:10px;
+bottom:0;
+right:0;
 background:rgba(0,0,0,0.6);
-padding:8px;
-font-size:12px;
+color:white;
+padding:10px;
+font-size:14px;
 text-align:right;
+max-width:60%;
 }
 
 button{
-padding:12px 20px;
+position:absolute;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+padding:15px 25px;
 font-size:18px;
-margin-top:10px;
+z-index:10;
 }
 
 </style>
@@ -70,15 +80,14 @@ margin-top:10px;
 <iframe id="map"></iframe>
 
 <div id="info">
-
 <div id="time"></div>
 <div id="gps"></div>
-
-</div>
-
+<div id="addr"></div>
 </div>
 
 <button onclick="capture()">CAPTURE</button>
+
+</div>
 
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -86,78 +95,137 @@ margin-top:10px;
 
 let lat=0;
 let lon=0;
+let address="";
 
-const video = document.getElementById("video");
+const video=document.getElementById("video");
 
 navigator.mediaDevices.getUserMedia({
-video:{facingMode:"environment"}
+video:{
+facingMode:"environment",
+width:{ideal:4096},
+height:{ideal:2160}
+}
 })
 .then(stream=>{
-video.srcObject = stream;
+video.srcObject=stream;
 });
 
-navigator.geolocation.getCurrentPosition(pos=>{
+navigator.geolocation.getCurrentPosition(async pos=>{
 
-lat = pos.coords.latitude;
-lon = pos.coords.longitude;
+lat=pos.coords.latitude;
+lon=pos.coords.longitude;
 
-document.getElementById("gps").innerHTML =
+document.getElementById("gps").innerHTML=
 lat.toFixed(6)+", "+lon.toFixed(6);
 
-document.getElementById("map").src =
+document.getElementById("map").src=
 "https://maps.google.com/maps?q="+lat+","+lon+"&z=16&output=embed";
+
+let geo=await fetch(
+"https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon
+);
+
+let data=await geo.json();
+
+address=data.display_name;
+
+document.getElementById("addr").innerHTML=address;
 
 });
 
 function getTime(){
 
-let now = new Date();
+let now=new Date();
 
 return now.toLocaleDateString()+" "+now.toLocaleTimeString();
 
 }
 
 setInterval(()=>{
-document.getElementById("time").innerHTML = getTime();
+document.getElementById("time").innerHTML=getTime();
 },1000);
 
-function capture(){
+async function capture(){
 
-const canvas = document.getElementById("canvas");
+let canvas=document.getElementById("canvas");
 
-canvas.width = video.videoWidth;
-canvas.height = video.videoHeight;
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
 
-const ctx = canvas.getContext("2d");
+let ctx=canvas.getContext("2d");
 
 ctx.drawImage(video,0,0);
 
+let logo=document.getElementById("logo");
+
+ctx.drawImage(logo,20,20,logo.naturalWidth,logo.naturalHeight);
+
+let mapImg=new Image();
+
+mapImg.crossOrigin="anonymous";
+
+mapImg.src=
+"https://staticmap.openstreetmap.de/staticmap.php?center="
++lat+","+lon+
+"&zoom=16&size=400x400&markers="
++lat+","+lon+",red";
+
+await new Promise(r=>mapImg.onload=r);
+
+ctx.drawImage(mapImg,20,canvas.height-420,400,400);
+
 ctx.fillStyle="rgba(0,0,0,0.6)";
-ctx.fillRect(canvas.width-260,canvas.height-90,250,80);
+ctx.fillRect(canvas.width-700,canvas.height-220,680,200);
 
 ctx.fillStyle="white";
-ctx.font="20px Arial";
+ctx.font="28px Arial";
 
-ctx.fillText(getTime(),canvas.width-250,canvas.height-60);
+ctx.fillText(getTime(),canvas.width-680,canvas.height-170);
 
-ctx.font="16px Arial";
+ctx.font="22px Arial";
 
 ctx.fillText(
 lat.toFixed(6)+", "+lon.toFixed(6),
-canvas.width-250,
-canvas.height-30
+canvas.width-680,
+canvas.height-130
 );
 
-const logo = document.getElementById("logo");
+wrapText(ctx,address,canvas.width-680,canvas.height-90,650,26);
 
-ctx.drawImage(logo,20,20,120,60);
-
-let link = document.createElement("a");
+let link=document.createElement("a");
 
 link.download="photo.png";
-link.href = canvas.toDataURL("image/png");
+link.href=canvas.toDataURL("image/png");
 
 link.click();
+
+}
+
+function wrapText(ctx,text,x,y,maxWidth,lineHeight){
+
+let words=text.split(" ");
+let line="";
+
+for(let n=0;n<words.length;n++){
+
+let testLine=line+words[n]+" ";
+let metrics=ctx.measureText(testLine);
+let testWidth=metrics.width;
+
+if(testWidth>maxWidth && n>0){
+
+ctx.fillText(line,x,y);
+line=words[n]+" ";
+y+=lineHeight;
+
+}
+else{
+line=testLine;
+}
+
+}
+
+ctx.fillText(line,x,y);
 
 }
 
