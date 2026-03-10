@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -29,34 +30,38 @@ object-fit:cover;
 position:absolute;
 top:10px;
 left:10px;
-height:70px;
+height:40px;
 }
 
-#info{
-position:absolute;
-bottom:10px;
-right:10px;
-background:rgba(0,0,0,0.6);
-color:white;
-padding:10px;
-font-size:14px;
-max-width:60%;
-}
-
-#map{
+#bottomPanel{
 position:absolute;
 bottom:10px;
 left:10px;
-width:150px;
-height:150px;
+right:10px;
+display:flex;
+gap:10px;
+}
+
+#map{
+width:25%;
+height:120px;
 border:0;
+}
+
+#info{
+width:75%;
+background:rgba(0,0,0,0.6);
+color:white;
+padding:8px;
+font-size:13px;
+overflow:hidden;
 }
 
 #captureBtn{
 width:100%;
-height:60px;
+height:65px;
 font-size:20px;
-background:#007bff;
+background:#0a84ff;
 color:white;
 border:none;
 }
@@ -73,6 +78,8 @@ border:none;
 
 <img id="logo" src="logo.png">
 
+<div id="bottomPanel">
+
 <iframe id="map"></iframe>
 
 <div id="info">
@@ -83,7 +90,9 @@ border:none;
 
 </div>
 
-<button id="captureBtn" onclick="capture()">CAPTURE PHOTO</button>
+</div>
+
+<button id="captureBtn">CAPTURE PHOTO</button>
 
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -101,8 +110,7 @@ facingMode:"environment",
 width:{ideal:4096},
 height:{ideal:2160}
 }
-})
-.then(stream=>{
+}).then(stream=>{
 video.srcObject=stream;
 });
 
@@ -123,7 +131,7 @@ let geo=await fetch(
 
 let data=await geo.json();
 
-address=data.display_name;
+address=data.display_name || "Address not available";
 
 document.getElementById("addr").innerHTML=address;
 
@@ -141,6 +149,8 @@ setInterval(()=>{
 document.getElementById("time").innerHTML=getTime();
 },1000);
 
+document.getElementById("captureBtn").addEventListener("click",capture);
+
 async function capture(){
 
 let canvas=document.getElementById("canvas");
@@ -154,7 +164,7 @@ ctx.drawImage(video,0,0);
 
 let logo=document.getElementById("logo");
 
-ctx.drawImage(logo,20,20,logo.naturalWidth,logo.naturalHeight);
+ctx.drawImage(logo,20,20,logo.naturalWidth/2,logo.naturalHeight/2);
 
 let mapImg=new Image();
 
@@ -163,34 +173,56 @@ mapImg.crossOrigin="anonymous";
 mapImg.src=
 "https://staticmap.openstreetmap.de/staticmap.php?center="
 +lat+","+lon+
-"&zoom=19&size=250x250&markers="
+"&zoom=19&size=300x300&markers="
 +lat+","+lon+",red";
 
 await new Promise(r=>mapImg.onload=r);
 
-ctx.drawImage(mapImg,20,canvas.height-270,250,250);
+let mapSize=canvas.width*0.25;
+
+ctx.drawImage(
+mapImg,
+20,
+canvas.height-mapSize-20,
+mapSize,
+mapSize
+);
+
+let infoX=mapSize+40;
+let infoWidth=canvas.width-infoX-20;
 
 ctx.fillStyle="rgba(0,0,0,0.6)";
-ctx.fillRect(canvas.width-650,canvas.height-200,630,180);
+ctx.fillRect(infoX,canvas.height-mapSize-20,infoWidth,mapSize);
 
 ctx.fillStyle="white";
 ctx.font="28px Arial";
 
-ctx.fillText(getTime(),canvas.width-630,canvas.height-150);
+ctx.fillText(
+getTime(),
+infoX+20,
+canvas.height-mapSize+40
+);
 
 ctx.font="22px Arial";
 
 ctx.fillText(
 lat.toFixed(6)+", "+lon.toFixed(6),
-canvas.width-630,
-canvas.height-110
+infoX+20,
+canvas.height-mapSize+80
 );
 
-wrapText(ctx,address,canvas.width-630,canvas.height-70,600,26);
+wrapText(
+ctx,
+address,
+infoX+20,
+canvas.height-mapSize+120,
+infoWidth-40,
+28
+);
 
 let link=document.createElement("a");
 
-link.download="photo.png";
+link.download="site_photo.png";
 link.href=canvas.toDataURL("image/png");
 
 link.click();
@@ -214,8 +246,7 @@ ctx.fillText(line,x,y);
 line=words[n]+" ";
 y+=lineHeight;
 
-}
-else{
+}else{
 line=testLine;
 }
 
@@ -229,3 +260,4 @@ ctx.fillText(line,x,y);
 
 </body>
 </html>
+```
