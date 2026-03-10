@@ -3,7 +3,6 @@
 <head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tien Tien Delivery Status</title>
 
 <style>
 
@@ -13,10 +12,10 @@ background:black;
 font-family:Arial;
 }
 
-#container{
+#cameraContainer{
 position:relative;
 width:100%;
-height:100vh;
+height:85vh;
 overflow:hidden;
 }
 
@@ -28,41 +27,38 @@ object-fit:cover;
 
 #logo{
 position:absolute;
-top:0;
-left:0;
-height:80px;
-padding:10px;
-}
-
-#map{
-position:absolute;
-bottom:0;
-left:0;
-width:200px;
-height:200px;
-border:0;
+top:10px;
+left:10px;
+height:70px;
 }
 
 #info{
 position:absolute;
-bottom:0;
-right:0;
+bottom:10px;
+right:10px;
 background:rgba(0,0,0,0.6);
 color:white;
 padding:10px;
 font-size:14px;
-text-align:right;
 max-width:60%;
 }
 
-button{
+#map{
 position:absolute;
-bottom:20px;
-left:50%;
-transform:translateX(-50%);
-padding:15px 25px;
-font-size:18px;
-z-index:10;
+bottom:10px;
+left:10px;
+width:150px;
+height:150px;
+border:0;
+}
+
+#captureBtn{
+width:100%;
+height:60px;
+font-size:20px;
+background:#007bff;
+color:white;
+border:none;
 }
 
 </style>
@@ -71,7 +67,7 @@ z-index:10;
 
 <body>
 
-<div id="container">
+<div id="cameraContainer">
 
 <video id="video" autoplay playsinline></video>
 
@@ -85,9 +81,9 @@ z-index:10;
 <div id="addr"></div>
 </div>
 
-<button onclick="capture()">CAPTURE</button>
-
 </div>
+
+<button id="captureBtn" onclick="capture()">CAPTURE PHOTO</button>
 
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -119,7 +115,7 @@ document.getElementById("gps").innerHTML=
 lat.toFixed(6)+", "+lon.toFixed(6);
 
 document.getElementById("map").src=
-"https://maps.google.com/maps?q="+lat+","+lon+"&z=16&output=embed";
+"https://maps.google.com/maps?q="+lat+","+lon+"&z=19&output=embed";
 
 let geo=await fetch(
 "https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon
@@ -167,30 +163,30 @@ mapImg.crossOrigin="anonymous";
 mapImg.src=
 "https://staticmap.openstreetmap.de/staticmap.php?center="
 +lat+","+lon+
-"&zoom=16&size=400x400&markers="
+"&zoom=19&size=250x250&markers="
 +lat+","+lon+",red";
 
 await new Promise(r=>mapImg.onload=r);
 
-ctx.drawImage(mapImg,20,canvas.height-420,400,400);
+ctx.drawImage(mapImg,20,canvas.height-270,250,250);
 
 ctx.fillStyle="rgba(0,0,0,0.6)";
-ctx.fillRect(canvas.width-700,canvas.height-220,680,200);
+ctx.fillRect(canvas.width-650,canvas.height-200,630,180);
 
 ctx.fillStyle="white";
 ctx.font="28px Arial";
 
-ctx.fillText(getTime(),canvas.width-680,canvas.height-170);
+ctx.fillText(getTime(),canvas.width-630,canvas.height-150);
 
 ctx.font="22px Arial";
 
 ctx.fillText(
 lat.toFixed(6)+", "+lon.toFixed(6),
-canvas.width-680,
-canvas.height-130
+canvas.width-630,
+canvas.height-110
 );
 
-wrapText(ctx,address,canvas.width-680,canvas.height-90,650,26);
+wrapText(ctx,address,canvas.width-630,canvas.height-70,600,26);
 
 let link=document.createElement("a");
 
