@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,7 +12,7 @@ background:black;
 font-family:Arial;
 }
 
-#cameraContainer{
+#camera{
 position:relative;
 width:100%;
 height:85vh;
@@ -28,23 +27,23 @@ object-fit:cover;
 
 #logo{
 position:absolute;
-top:10px;
-left:10px;
-height:40px;
+top:0;
+left:0;
+width:8vw;
+max-width:120px;
 }
 
-#bottomPanel{
+#bottom{
 position:absolute;
-bottom:10px;
-left:10px;
-right:10px;
+bottom:0;
+left:0;
+right:0;
 display:flex;
-gap:10px;
 }
 
 #map{
 width:25%;
-height:120px;
+height:110px;
 border:0;
 }
 
@@ -52,16 +51,15 @@ border:0;
 width:75%;
 background:rgba(0,0,0,0.6);
 color:white;
-padding:8px;
 font-size:13px;
-overflow:hidden;
+padding:6px;
 }
 
-#captureBtn{
+#capture{
 width:100%;
 height:65px;
 font-size:20px;
-background:#0a84ff;
+background:#007aff;
 color:white;
 border:none;
 }
@@ -72,13 +70,13 @@ border:none;
 
 <body>
 
-<div id="cameraContainer">
+<div id="camera">
 
 <video id="video" autoplay playsinline></video>
 
 <img id="logo" src="logo.png">
 
-<div id="bottomPanel">
+<div id="bottom">
 
 <iframe id="map"></iframe>
 
@@ -92,7 +90,7 @@ border:none;
 
 </div>
 
-<button id="captureBtn">CAPTURE PHOTO</button>
+<button id="capture" type="button">CAPTURE PHOTO</button>
 
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -120,18 +118,18 @@ lat=pos.coords.latitude;
 lon=pos.coords.longitude;
 
 document.getElementById("gps").innerHTML=
-lat.toFixed(6)+", "+lon.toFixed(6);
+lat.toFixed(6)+" , "+lon.toFixed(6);
 
 document.getElementById("map").src=
 "https://maps.google.com/maps?q="+lat+","+lon+"&z=19&output=embed";
 
-let geo=await fetch(
+let r=await fetch(
 "https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon
 );
 
-let data=await geo.json();
+let d=await r.json();
 
-address=data.display_name || "Address not available";
+address=d.display_name || "";
 
 document.getElementById("addr").innerHTML=address;
 
@@ -139,9 +137,9 @@ document.getElementById("addr").innerHTML=address;
 
 function getTime(){
 
-let now=new Date();
+let n=new Date();
 
-return now.toLocaleDateString()+" "+now.toLocaleTimeString();
+return n.toLocaleDateString()+" "+n.toLocaleTimeString();
 
 }
 
@@ -149,7 +147,7 @@ setInterval(()=>{
 document.getElementById("time").innerHTML=getTime();
 },1000);
 
-document.getElementById("captureBtn").addEventListener("click",capture);
+document.getElementById("capture").addEventListener("click",capture);
 
 async function capture(){
 
@@ -164,7 +162,10 @@ ctx.drawImage(video,0,0);
 
 let logo=document.getElementById("logo");
 
-ctx.drawImage(logo,20,20,logo.naturalWidth/2,logo.naturalHeight/2);
+let logoW=canvas.width*0.08;
+let logoH=logoW*(logo.naturalHeight/logo.naturalWidth);
+
+ctx.drawImage(logo,0,0,logoW,logoH);
 
 let mapImg=new Image();
 
@@ -173,7 +174,7 @@ mapImg.crossOrigin="anonymous";
 mapImg.src=
 "https://staticmap.openstreetmap.de/staticmap.php?center="
 +lat+","+lon+
-"&zoom=19&size=300x300&markers="
+"&zoom=19&size=400x400&markers="
 +lat+","+lon+",red";
 
 await new Promise(r=>mapImg.onload=r);
@@ -182,48 +183,32 @@ let mapSize=canvas.width*0.25;
 
 ctx.drawImage(
 mapImg,
-20,
-canvas.height-mapSize-20,
+0,
+canvas.height-mapSize,
 mapSize,
 mapSize
 );
 
-let infoX=mapSize+40;
-let infoWidth=canvas.width-infoX-20;
+let infoX=mapSize;
+let infoW=canvas.width-mapSize;
 
 ctx.fillStyle="rgba(0,0,0,0.6)";
-ctx.fillRect(infoX,canvas.height-mapSize-20,infoWidth,mapSize);
+ctx.fillRect(infoX,canvas.height-mapSize,infoW,mapSize);
 
 ctx.fillStyle="white";
-ctx.font="28px Arial";
 
-ctx.fillText(
-getTime(),
-infoX+20,
-canvas.height-mapSize+40
-);
+ctx.font="28px Arial";
+ctx.fillText(getTime(),infoX+20,canvas.height-mapSize+40);
 
 ctx.font="22px Arial";
+ctx.fillText(lat.toFixed(6)+" , "+lon.toFixed(6),infoX+20,canvas.height-mapSize+80);
 
-ctx.fillText(
-lat.toFixed(6)+", "+lon.toFixed(6),
-infoX+20,
-canvas.height-mapSize+80
-);
-
-wrapText(
-ctx,
-address,
-infoX+20,
-canvas.height-mapSize+120,
-infoWidth-40,
-28
-);
+wrapText(ctx,address,infoX+20,canvas.height-mapSize+120,infoW-40,28);
 
 let link=document.createElement("a");
 
-link.download="site_photo.png";
 link.href=canvas.toDataURL("image/png");
+link.download="site_photo.png";
 
 link.click();
 
@@ -236,18 +221,17 @@ let line="";
 
 for(let n=0;n<words.length;n++){
 
-let testLine=line+words[n]+" ";
-let metrics=ctx.measureText(testLine);
-let testWidth=metrics.width;
+let test=line+words[n]+" ";
+let w=ctx.measureText(test).width;
 
-if(testWidth>maxWidth && n>0){
+if(w>maxWidth && n>0){
 
 ctx.fillText(line,x,y);
 line=words[n]+" ";
 y+=lineHeight;
 
 }else{
-line=testLine;
+line=test;
 }
 
 }
@@ -260,4 +244,3 @@ ctx.fillText(line,x,y);
 
 </body>
 </html>
-```
