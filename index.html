@@ -15,7 +15,7 @@ font-family:Arial;
 #camera{
 position:relative;
 width:100%;
-height:85vh;
+height:75vh;
 overflow:hidden;
 }
 
@@ -25,40 +25,33 @@ height:100%;
 object-fit:cover;
 }
 
-#logo{
+#topbar{
 position:absolute;
 top:0;
 left:0;
-width:8vw;
-max-width:120px;
-}
-
-#bottom{
-position:absolute;
-bottom:0;
-left:0;
-right:0;
 display:flex;
+align-items:flex-start;
 }
 
-#map{
-width:25%;
-height:110px;
-border:0;
+#mapPreview{
+height:60px;
+}
+
+#logo{
+height:60px;
 }
 
 #info{
-width:75%;
-background:rgba(0,0,0,0.6);
+background:rgba(0,0,0,0.7);
 color:white;
-font-size:13px;
-padding:6px;
+padding:10px;
+font-size:14px;
 }
 
 #capture{
 width:100%;
-height:65px;
-font-size:20px;
+height:70px;
+font-size:22px;
 background:#007aff;
 color:white;
 border:none;
@@ -74,11 +67,12 @@ border:none;
 
 <video id="video" autoplay playsinline></video>
 
+<div id="topbar">
+<img id="mapPreview">
 <img id="logo" src="logo.png">
+</div>
 
-<div id="bottom">
-
-<iframe id="map"></iframe>
+</div>
 
 <div id="info">
 <div id="time"></div>
@@ -86,11 +80,7 @@ border:none;
 <div id="addr"></div>
 </div>
 
-</div>
-
-</div>
-
-<button id="capture" type="button">CAPTURE PHOTO</button>
+<button id="capture">CAPTURE</button>
 
 <canvas id="canvas" style="display:none"></canvas>
 
@@ -99,15 +89,12 @@ border:none;
 let lat=0;
 let lon=0;
 let address="";
+let mapURL="";
 
 const video=document.getElementById("video");
 
 navigator.mediaDevices.getUserMedia({
-video:{
-facingMode:"environment",
-width:{ideal:4096},
-height:{ideal:2160}
-}
+video:{facingMode:"environment"}
 }).then(stream=>{
 video.srcObject=stream;
 });
@@ -120,8 +107,13 @@ lon=pos.coords.longitude;
 document.getElementById("gps").innerHTML=
 lat.toFixed(6)+" , "+lon.toFixed(6);
 
-document.getElementById("map").src=
-"https://maps.google.com/maps?q="+lat+","+lon+"&z=19&output=embed";
+mapURL=
+"https://staticmap.openstreetmap.de/staticmap.php?center="
++lat+","+lon+
+"&zoom=19&size=300x300&markers="
++lat+","+lon+",red";
+
+document.getElementById("mapPreview").src=mapURL;
 
 let r=await fetch(
 "https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lon
@@ -149,7 +141,7 @@ document.getElementById("time").innerHTML=getTime();
 
 document.getElementById("capture").addEventListener("click",capture);
 
-async function capture(){
+function capture(){
 
 let canvas=document.getElementById("canvas");
 
@@ -160,50 +152,42 @@ let ctx=canvas.getContext("2d");
 
 ctx.drawImage(video,0,0);
 
+let mapImg=new Image();
+mapImg.src=mapURL;
+
+mapImg.onload=function(){
+
+let mapSize=canvas.width*0.15;
+
+ctx.drawImage(mapImg,0,0,mapSize,mapSize);
+
 let logo=document.getElementById("logo");
 
-let logoW=canvas.width*0.08;
-let logoH=logoW*(logo.naturalHeight/logo.naturalWidth);
+let logoW=mapSize*(logo.naturalWidth/logo.naturalHeight);
 
-ctx.drawImage(logo,0,0,logoW,logoH);
+ctx.drawImage(logo,mapSize,0,logoW,mapSize);
 
-let mapImg=new Image();
+let infoHeight=canvas.height*0.20;
 
-mapImg.crossOrigin="anonymous";
-
-mapImg.src=
-"https://staticmap.openstreetmap.de/staticmap.php?center="
-+lat+","+lon+
-"&zoom=19&size=400x400&markers="
-+lat+","+lon+",red";
-
-await new Promise(r=>mapImg.onload=r);
-
-let mapSize=canvas.width*0.25;
-
-ctx.drawImage(
-mapImg,
-0,
-canvas.height-mapSize,
-mapSize,
-mapSize
-);
-
-let infoX=mapSize;
-let infoW=canvas.width-mapSize;
-
-ctx.fillStyle="rgba(0,0,0,0.6)";
-ctx.fillRect(infoX,canvas.height-mapSize,infoW,mapSize);
+ctx.fillStyle="rgba(0,0,0,0.7)";
+ctx.fillRect(0,canvas.height-infoHeight,canvas.width,infoHeight);
 
 ctx.fillStyle="white";
 
 ctx.font="28px Arial";
-ctx.fillText(getTime(),infoX+20,canvas.height-mapSize+40);
+ctx.fillText(getTime(),20,canvas.height-infoHeight+40);
 
 ctx.font="22px Arial";
-ctx.fillText(lat.toFixed(6)+" , "+lon.toFixed(6),infoX+20,canvas.height-mapSize+80);
+ctx.fillText(lat.toFixed(6)+" , "+lon.toFixed(6),20,canvas.height-infoHeight+80);
 
-wrapText(ctx,address,infoX+20,canvas.height-mapSize+120,infoW-40,28);
+wrapText(
+ctx,
+address,
+20,
+canvas.height-infoHeight+120,
+canvas.width-40,
+28
+);
 
 let link=document.createElement("a");
 
@@ -211,6 +195,8 @@ link.href=canvas.toDataURL("image/png");
 link.download="site_photo.png";
 
 link.click();
+
+}
 
 }
 
