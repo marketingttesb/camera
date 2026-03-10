@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Camera GPS Capture - v1.0.2</title>
+<title>Camera GPS Capture PWA</title>
+<link rel="manifest" href="manifest.json">
 <style>
 body{
-  background:#000;
+  margin:0;
+  font-family:Arial;
+  background:black;
   color:white;
   text-align:center;
-  font-family:Arial;
-  margin:0;
 }
 #container{
   position:relative;
@@ -24,7 +26,7 @@ video{
   position:absolute;
   top:0;
   left:0;
-  width:50%; /* 50% screen width */
+  width:50%;
   height:auto;
   object-fit:contain;
 }
@@ -32,14 +34,13 @@ video{
   position:absolute;
   bottom:0;
   left:0;
-  width:25%; /* 1/4 screen */
+  width:25%;
   height:auto;
-  object-fit:cover;
 }
 #info{
   position:absolute;
   bottom:0;
-  left:25%; /* baki 3/4 */
+  left:25%;
   width:75%;
   background:rgba(0,0,0,0.6);
   padding:8px;
@@ -47,15 +48,14 @@ video{
   text-align:left;
 }
 button{
+  display:block;
+  margin:15px auto;
   padding:12px 20px;
   font-size:18px;
-  margin:15px auto;
-  display:block;
 }
 </style>
 </head>
 <body>
-
 <div id="container">
   <video id="video" autoplay playsinline></video>
   <img id="logo" src="logo.png">
@@ -85,6 +85,7 @@ navigator.geolocation.getCurrentPosition(async pos=>{
 
   document.getElementById("gps").innerHTML = lat.toFixed(6)+", "+lon.toFixed(6);
 
+  // Map static
   mapURL="https://staticmap.openstreetmap.de/staticmap.php?center="+lat+","+lon+"&zoom=16&size=300x300&markers="+lat+","+lon+",red";
   const mapImgEl=document.getElementById("map");
   mapImgEl.src=mapURL;
@@ -115,25 +116,24 @@ document.getElementById("capture").addEventListener("click",()=>{
   canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
-  // draw video
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // draw logo (top-left, 50% width)
+  // logo
   const logo=document.getElementById("logo");
   const logoWidth=canvas.width*0.5;
   const logoHeight=logo.naturalHeight*(logoWidth/logo.naturalWidth);
   ctx.drawImage(logo,0,0,logoWidth,logoHeight);
 
-  // draw map (bottom-left, 1/4 width)
+  // map
   const map=document.getElementById("map");
   const mapWidth=canvas.width*0.25;
   const mapHeight=map.naturalHeight*(mapWidth/map.naturalWidth);
   ctx.drawImage(map,0,canvas.height-mapHeight,mapWidth,mapHeight);
 
-  // draw info panel (3/4 bottom-right)
+  // info panel
   const infoX=mapWidth;
   const infoWidth=canvas.width-mapWidth;
-  const infoHeight=canvas.height*0.25; // adjust panel height
+  const infoHeight=canvas.height*0.25;
   ctx.fillStyle="rgba(0,0,0,0.6)";
   ctx.fillRect(infoX,canvas.height-infoHeight,infoWidth,infoHeight);
 
@@ -148,7 +148,7 @@ document.getElementById("capture").addEventListener("click",()=>{
 
   // download
   const link=document.createElement("a");
-  link.download="photo.png";
+  link.download="site_photo.png";
   link.href=canvas.toDataURL("image/png");
   link.click();
 });
@@ -167,7 +167,11 @@ function wrapText(ctx,text,x,y,maxWidth,lineHeight){
   }
   ctx.fillText(line,x,y);
 }
-</script>
 
+// register service worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(()=>console.log("SW registered"));
+}
+</script>
 </body>
 </html>
